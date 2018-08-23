@@ -1,0 +1,30 @@
+{
+    "name": "ximdex/xfind-laravel",
+    "description": "",
+    "authors": [
+        {
+            "name": "Alejandro De Tovar",
+            "email": "atovar@ximdex.com"
+        },
+        {
+            "name": "David Arroyo",
+            "email": "darroyo@ximdex.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "solarium/solarium": "4.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Xfind\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Xfind\\XfindServiceProvider"
+            ]
+        }
+    }
+}
