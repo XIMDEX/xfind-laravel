@@ -133,7 +133,11 @@ class Solr extends Client
         foreach ($facets as $facet => $value) {
             $values = $value->getValues();
             if (is_array($values) && count($values) > 0) {
-                $resultFacet[$facet] = $values;
+                $resultFacet[] = [
+                    'key' => $facet,
+                    'label' => $this->lang($facet),
+                    'values' => $values,
+                ];
             }
         }
 
@@ -196,7 +200,17 @@ class Solr extends Client
             ->createFacetField($facet)
             ->setField($field)
             ->setSort('index')
-            ->setLimit(-1);;
+            ->setLimit(-1);
         return $this;
+    }
+
+    protected function lang($string) {
+        $translation = config('xfind.translations') . ".{$string}";
+        $result = __($translation);
+
+        if ($result === $translation) {
+            $result = $string;
+        }
+        return $result;
     }
 }
