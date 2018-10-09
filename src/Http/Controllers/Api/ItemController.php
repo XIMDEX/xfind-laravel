@@ -2,16 +2,21 @@
 
 namespace Xfind\Http\Controllers\api;
 
-use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
-use Xfind\Core\Utils\DateHelpers;
-use Xfind\Core\Utils\ArrayHelpers;
-
-use Illuminate\Support\Facades\Request as StaticRequest;
 use Xfind\Models\Item;
+use Illuminate\Http\Request;
+use Xfind\Core\Utils\DateHelpers;
+
+use Illuminate\Routing\Controller;
+use Xfind\Core\Utils\ArrayHelpers;
+use Illuminate\Foundation\Bus\DispatchesJobs;
+use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Support\Facades\Request as StaticRequest;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class ItemController extends Controller
 {
+    use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
+    
     protected $request;
     protected $response;
     protected $model = Item::class;
@@ -27,7 +32,7 @@ class ItemController extends Controller
     public function __construct()
     {
         $this->model = app()->make($this->model);
-        $this->middleware('xml');
+        $this->middleware(\XmlMiddleware\XmlRequestMiddleware::class);
         $this->getQueryParams();
     }
 
@@ -71,7 +76,7 @@ class ItemController extends Controller
 
         $type = 'AND';
         if (array_key_exists('exclude', $queryParams)) {
-            $type = ($queryParams['exclude'] === true | $queryParams['exclude'] === 'true') ? 'AND' : 'OR';
+            $type = ($queryParams['exclude'] === true | $queryParams['exclude'] === 'true') ? $type : 'OR';
         }
 
         $params = [
@@ -84,11 +89,16 @@ class ItemController extends Controller
         $query = [];
 
         foreach ($queryParams as $param => $value) {
+            if (empty($value) || is_null($value)) {
+                continue;
+            }
             if (array_key_exists($param, $params)) {
                 $params[$param] = $queryParams[$param];
                 $this->setQueryParamsToModel($param, $queryParams[$param]);
-            } elseif (in_array($param, $this->model->getFields())) {
-                $query[] = "$param:$value";
+            }   elseif ($param === $this->model::$search) {
+                $query[] = "$param:($value)";
+            }   elseif (in_array($param, $this->model->getFields())) {
+                $query[] = $this->setParam($param, $value);
             } elseif (substr($param, 0, 5) === 'sort_') {
                 $sort[str_replace('sort_', '', $param)] = $value;
             }
@@ -128,6 +138,25 @@ class ItemController extends Controller
             $func = static::$paramsToModel[$param];
             $this->model->$func($value);
         }
+    }
+
+    protected function setParam(string $param, $value) : string
+    {
+        $values = explode(',', $value);
+        $last = count($values) - 1;
+        $result = '';
+        
+        foreach($values as $key => $val) {
+            if (!starts_with($val, '`') && !ends_with($val, '`')) {
+                $val = "\"$val\"";
+            }   else {
+                $val = str_replace('`', '', $val);
+            }
+            $result .= " $val " . (($key < $last) ? 'OR' : '');
+        }
+
+        $result = trim($result);
+        return "$param:($result)";
     }
 
     protected function setResponse($data = [], $json = false, $status = 200)

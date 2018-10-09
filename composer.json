@@ -13,7 +13,8 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "solarium/solarium": "4.*"
+        "solarium/solarium": "4.*",
+        "tucker-eric/laravel-xml-middleware": "^1.0"
     },
     "autoload": {
         "psr-4": {

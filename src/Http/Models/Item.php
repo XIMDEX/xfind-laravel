@@ -2,9 +2,10 @@
 
 namespace Xfind\Models;
 
-use phpDocumentor\Reflection\Types\Static_;
 use Xfind\Core\Solr;
 use Solarium\QueryType\Select\Query\Query;
+use phpDocumentor\Reflection\Types\Static_;
+use Solarium\Exception\InvalidArgumentException;
 
 abstract class Item
 {
@@ -14,17 +15,20 @@ abstract class Item
     protected $query = '*:*';
     protected $sort = [];
 
+    protected static $search = null;
+
     protected static $rules = [
         'id' => ['field' => 'id', 'type' => 'string', 'required' => true],
         'created_at' => ['field' => 'datetime', 'type' => 'string', 'required' => false],
         'update_date' => ['field' => 'datetime', 'type' => 'string', 'required' => false],
     ];
 
+
+    protected static $facets = [];
+
     protected $fields = [];
 
     protected $highlight_fields = [];
-
-    protected $facets = [];
 
     private $client;
 
@@ -104,9 +108,8 @@ abstract class Item
      */
     public function getFacets()
     {
-        return $this->facets;
+        return static::$facets;
     }
-
 
     /**
      * Get the value of facets
@@ -156,11 +159,13 @@ abstract class Item
         return $this->sort;
     }
 
-    public function facets(array $facets = null)
+
+    /**
+     * Remove facets from array
+     */
+    public function removeFacets(array $facets)
     {
-        if (is_null($facets)) {
-            $facets = $this->facets;
-        }
+        static::$facets = array_diff(static::$facets, $facets);
     }
 
     public function find($query = null, array $sort = [])
@@ -177,8 +182,12 @@ abstract class Item
             ->selectQuery($query)
             ->sort($sort);
 
-        foreach ($this->facets as $facet) {
-            $this->facetField($facet, $facet);
+        foreach (static::$facets as $facet) {
+            try {
+                $this->facetField($facet, $facet);
+            } catch (InvalidArgumentException $ex) {
+                \Log::warning($ex);
+            }
         }
 
         return $this;
@@ -296,7 +305,8 @@ abstract class Item
             'pages' => $pages,
             'page' => $page,
             'next' => ($next >= $pages) ? $pages : $next,
-            'prev' => ($prev <= 0) ? 1 : $prev
+            'prev' => ($prev <= 0) ? 1 : $prev,
+            'per_page' => $this->limitPerPage,
         ];
 
         $result += ['pager' => $pager];
