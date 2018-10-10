@@ -3,6 +3,7 @@
 namespace Xfind\Models;
 
 use Xfind\Core\Solr;
+use Illuminate\Support\Str;
 use Solarium\QueryType\Select\Query\Query;
 use phpDocumentor\Reflection\Types\Static_;
 use Solarium\Exception\InvalidArgumentException;
@@ -101,6 +102,27 @@ abstract class Item
     public function setQuery($query)
     {
         $this->query = $query;
+
+        return $this;
+    }
+
+    /**
+     * Append the value of query
+     *
+     * @return  self
+     */
+    public function appendQuery($query)
+    {
+        if ($this->query === '*:*' || $query === '*:*') {
+            return $this->setQuery($query);
+        }
+        
+        $this->query .= " {$query}";
+        $this->query = trim($this->query);
+
+        if (Str::startsWith($this->query, 'AND')) {
+            $this->query = trim(str_replace_first('AND', '', $this->query));
+        }
 
         return $this;
     }

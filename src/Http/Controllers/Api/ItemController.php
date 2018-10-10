@@ -23,7 +23,7 @@ class ItemController extends Controller
 
 
     public static $paramsToModel = [
-        'query' => 'setQuery',
+        'query' => 'appendQuery',
         'limit' => 'setLimitPerPage',
         'start' => 'setStart',
         'page' => 'setPage'
@@ -71,15 +71,19 @@ class ItemController extends Controller
     }
 
     protected function getQueryParams()
-    {
+    {        
         $queryParams = StaticRequest::all();
 
         $type = 'AND';
         if (array_key_exists('exclude', $queryParams)) {
             $type = ($queryParams['exclude'] === true | $queryParams['exclude'] === 'true') ? $type : 'OR';
-        }
+        }        
 
-        $params = [
+        return $this->addParams($queryParams, $type, null);
+    }
+
+    protected function addParams(array $params, string $type = 'AND', ?string $prefix = 'AND') {
+        $baseParams = [
             'limit' => 20,
             'start' => 0,
             'page' => 1
@@ -88,13 +92,13 @@ class ItemController extends Controller
         $sort = [];
         $query = [];
 
-        foreach ($queryParams as $param => $value) {
+        foreach ($params as $param => $value) {
             if (empty($value) || is_null($value)) {
                 continue;
             }
-            if (array_key_exists($param, $params)) {
-                $params[$param] = $queryParams[$param];
-                $this->setQueryParamsToModel($param, $queryParams[$param]);
+            if (array_key_exists($param, $baseParams)) {
+                $baseParams[$param] = $params[$param];
+                $this->setQueryParamsToModel($param, $params[$param]);
             }   elseif ($param === $this->model::$search) {
                 $query[] = $this->setSearch($param, $value);
             }   elseif (in_array($param, $this->model->getFields())) {
@@ -105,10 +109,13 @@ class ItemController extends Controller
         }
 
         $query = count($query) > 0 ? implode($query, " $type ") : "*:*";
+        if ($prefix) {
+            $query = " {$prefix} ({$query})";
+        }
         $this->setQueryParamsToModel('query', $query);
         $this->model->setSort($sort);
 
-        return $params;
+        return $baseParams;
     }
 
     protected function prepareData(&$data)
