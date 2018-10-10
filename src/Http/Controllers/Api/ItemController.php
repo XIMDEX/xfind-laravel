@@ -96,7 +96,7 @@ class ItemController extends Controller
                 $params[$param] = $queryParams[$param];
                 $this->setQueryParamsToModel($param, $queryParams[$param]);
             }   elseif ($param === $this->model::$search) {
-                $query[] = "$param:($value)";
+                $query[] = $this->setSearch($param, $value);
             }   elseif (in_array($param, $this->model->getFields())) {
                 $query[] = $this->setParam($param, $value);
             } elseif (substr($param, 0, 5) === 'sort_') {
@@ -153,6 +153,44 @@ class ItemController extends Controller
                 $val = str_replace('`', '', $val);
             }
             $result .= " $val " . (($key < $last) ? 'OR' : '');
+        }
+
+        $result = trim($result);
+        return "$param:($result)";
+    }
+
+    protected function setSearch(string $param, $value)
+    {
+        $values = explode('"', $value);
+        $literal = false;
+
+        foreach ($values as $key => $val) {
+            if(empty($val)) {
+                $literal = !$literal;
+                unset($values[$key]);
+                continue;
+            }
+
+            if ($literal) {
+                $values[$key] = "\"$val\"";
+                $literal = false;
+            } else {
+                $val = trim($val);
+                unset($values[$key]);
+                $values = array_merge($values, explode(' ', $val));
+            }
+        }
+
+        $last = count($values) - 1;
+        $result = '';
+        
+        foreach($values as $key => $val) {
+            $val = trim($val);
+            if (starts_with($val, '`') && ends_with($val, '`')) {
+                $val = str_replace('`', '', $val);
+            }
+
+            $result .= " $val " . (($key < $last) ? 'AND' : '');
         }
 
         $result = trim($result);

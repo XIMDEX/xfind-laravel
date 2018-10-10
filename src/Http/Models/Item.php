@@ -15,12 +15,14 @@ abstract class Item
     protected $query = '*:*';
     protected $sort = [];
 
+    protected $defaultSort = ['updated_at' => 'desc'];
+        
     protected static $search = null;
 
     protected static $rules = [
         'id' => ['field' => 'id', 'type' => 'string', 'required' => true],
         'created_at' => ['field' => 'datetime', 'type' => 'string', 'required' => false],
-        'update_date' => ['field' => 'datetime', 'type' => 'string', 'required' => false],
+        'updated_at' => ['field' => 'datetime', 'type' => 'string', 'required' => false],
     ];
 
 
