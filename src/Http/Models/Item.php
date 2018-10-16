@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 use Solarium\QueryType\Select\Query\Query;
 use phpDocumentor\Reflection\Types\Static_;
 use Solarium\Exception\InvalidArgumentException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 abstract class Item
 {
@@ -270,10 +271,17 @@ abstract class Item
 
     public function delete($id)
     {
+        $exists = $this->one("id:{$id}");
+        if (is_null($exists)) {
+            throw new ModelNotFoundException();
+        }
         $delete = $this->client->createUpdate();
         $delete->addDeleteById($id);
         $delete->addCommit();
-        return $this->client->update($delete);
+        $updated = $this->client->update($delete);
+
+        $exists = $this->one("id:{$id}");
+        return is_null($exists);
     }
 
     public function ping()
