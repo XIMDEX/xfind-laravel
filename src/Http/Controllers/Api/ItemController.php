@@ -71,18 +71,19 @@ class ItemController extends Controller
     }
 
     protected function getQueryParams()
-    {        
+    {
         $queryParams = StaticRequest::all();
 
         $type = 'AND';
         if (array_key_exists('exclude', $queryParams)) {
             $type = ($queryParams['exclude'] === true | $queryParams['exclude'] === 'true') ? $type : 'OR';
-        }        
+        }
 
         return $this->addParams($queryParams, $type, null);
     }
 
-    protected function addParams(array $params, string $type = 'AND', ?string $prefix = 'AND') {
+    protected function addParams(array $params, string $type = 'AND', ?string $prefix = 'AND')
+    {
         $baseParams = [
             'limit' => 20,
             'start' => 0,
@@ -99,9 +100,9 @@ class ItemController extends Controller
             if (array_key_exists($param, $baseParams)) {
                 $baseParams[$param] = $params[$param];
                 $this->setQueryParamsToModel($param, $params[$param]);
-            }   elseif ($param === $this->model::$search) {
+            } elseif ($param === $this->model::$search) {
                 $query[] = $this->setSearch($param, $value);
-            }   elseif (in_array($param, $this->model->getFields())) {
+            } elseif (in_array($param, $this->model->getFields())) {
                 $query[] = $this->setParam($param, $value);
             } elseif (substr($param, 0, 5) === 'sort_') {
                 $sort[str_replace('sort_', '', $param)] = $value;
@@ -149,21 +150,21 @@ class ItemController extends Controller
 
     protected function setParam(string $param, $value) : string
     {
-        $values = explode(',', $value);
-        $last = count($values) - 1;
-        $result = '';
+        // $values = explode(',', $value);
+        // $last = count($values) - 1;
+        // $result = '';
         
-        foreach($values as $key => $val) {
-            if (!starts_with($val, '`') && !ends_with($val, '`')) {
-                $val = "\"$val\"";
-            }   else {
-                $val = str_replace('`', '', $val);
-            }
-            $result .= " $val " . (($key < $last) ? 'OR' : '');
-        }
+        // foreach($values as $key => $val) {
+        //     if (!starts_with($val, '`') && !ends_with($val, '`')) {
+        //         $val = "\"$val\"";
+        //     }   else {
+        //         $val = str_replace('`', '', $val);
+        //     }
+        //     $result .= " $val " . (($key < $last) ? 'OR' : '');
+        // }
 
-        $result = trim($result);
-        return "$param:($result)";
+        $result = trim($value);
+        return "$param:(\"$result\")";
     }
 
     protected function setSearch(string $param, $value)
@@ -172,7 +173,7 @@ class ItemController extends Controller
         $literal = false;
 
         foreach ($values as $key => $val) {
-            if(empty($val)) {
+            if (empty($val)) {
                 $literal = !$literal;
                 unset($values[$key]);
                 continue;
@@ -191,7 +192,7 @@ class ItemController extends Controller
         $last = count($values) - 1;
         $result = '';
         
-        foreach($values as $key => $val) {
+        foreach ($values as $key => $val) {
             $val = trim($val);
             if (starts_with($val, '`') && ends_with($val, '`')) {
                 $val = str_replace('`', '', $val);
