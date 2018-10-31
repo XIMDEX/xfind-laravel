@@ -102,6 +102,10 @@ abstract class Item
      */
     public function setQuery($query)
     {
+        $query = trim($query);
+        if (starts_with($query, 'AND')) {
+            $query = trim(str_replace_first('AND', '', $query));
+        }
         $this->query = $query;
 
         return $this;
