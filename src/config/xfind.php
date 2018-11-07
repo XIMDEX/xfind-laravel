@@ -7,5 +7,10 @@ return [
         'path' => env('SOLR_PATH', '/solr/'),
         'core' => env('SOLR_CORE', 'default'),
     ],
+
+    'date' => [
+        'format' => \DateTime::ISO8601,
+    ],
+
     'translations' => 'xfind'
 ];
