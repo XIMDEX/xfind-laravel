@@ -2,8 +2,6 @@
 
 namespace Xfind;
 
-use App\Http\Kernel;
-use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 
 class XfindServiceProvider extends ServiceProvider
