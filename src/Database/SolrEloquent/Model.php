@@ -46,8 +46,15 @@ abstract class Model
      */
     const UPDATED_AT = 'updated_at';
 
+    // TODO Query builder
+
+    protected static $indexModel = null;
+    protected $solr = null;
+    protected $solrClient = null;
+
     public function __construct($attributes = [])
     {
+        $this->solr = new static::$indexModel($this->solrClient);
         $this->fill($attributes);
     }    
 

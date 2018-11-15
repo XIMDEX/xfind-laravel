@@ -5,7 +5,6 @@ namespace Xfind\Models;
 use Xfind\Core\Solr;
 use Illuminate\Support\Str;
 use Solarium\QueryType\Select\Query\Query;
-use phpDocumentor\Reflection\Types\Static_;
 use Solarium\Exception\InvalidArgumentException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -44,7 +43,6 @@ abstract class Item
         }
         static::$rules = array_merge(static::$rules, self::$rules);
         $this->fields = array_keys(static::$rules);
-
     }
 
     /**
@@ -236,6 +234,11 @@ abstract class Item
         }
 
         return $this;
+    }
+
+    public function byId(string $id)
+    {
+        return $this->one("id:'{$id}'");
     }
 
     public function one($query)
