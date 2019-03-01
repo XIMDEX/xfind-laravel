@@ -14,11 +14,12 @@ abstract class Item
     protected $page = 0;
     protected $start = 0;
     protected $query = '*:*';
+    protected $filters = [];
     protected $sort = [];
 
     protected $defaultSort = ['updated_at' => 'desc'];
         
-    protected static $search = null;
+    public static $search = null;
 
     protected static $rules = [
         'id' => ['field' => 'id', 'type' => 'string', 'required' => true],
@@ -30,6 +31,8 @@ abstract class Item
     protected static $facets = [];
 
     protected $fields = [];
+
+    protected $filterFields = [];
 
     protected $highlight_fields = [];
 
@@ -185,6 +188,26 @@ abstract class Item
     {
         return $this->sort;
     }
+    
+    public function addFilter(string $query, string $name = null)
+    {
+        if (is_null($name)) {
+            $name = uniqid();
+        }
+
+        $this->filters[$name] = $query;
+        return $this;
+    }
+
+    public function getFilters() : array
+    {
+        return $this->filters;
+    }
+
+    public function isFilter($field) : bool
+    {
+        return in_array($field, $this->filterFields);
+    }
 
 
     /**
@@ -206,9 +229,9 @@ abstract class Item
         }
 
         $this->client
-            ->selectQuery($query)
+            ->selectQuery($query, $this->filters)
             ->sort($sort);
-
+        
         foreach (static::$facets as $facet) {
             try {
                 $this->facetField($facet, $facet);

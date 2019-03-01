@@ -103,7 +103,12 @@ class ItemController extends Controller
             } elseif ($param === $this->model::$search) {
                 $query[] = $this->setSearch($param, $value);
             } elseif (in_array($param, $this->model->getFields())) {
-                $query[] = $this->setParam($param, $value);
+                $qparam = $this->setParam($param, $value);
+                if ($this->model->isFilter($param)) {
+                    $this->model->addFilter($qparam);
+                    continue;
+                }
+                $query[] = $qparam;
             } elseif (substr($param, 0, 5) === 'sort_') {
                 $sort[str_replace('sort_', '', $param)] = $value;
             }
@@ -150,21 +155,8 @@ class ItemController extends Controller
 
     protected function setParam(string $param, $value) : string
     {
-        // $values = explode(',', $value);
-        // $last = count($values) - 1;
-        // $result = '';
-        
-        // foreach($values as $key => $val) {
-        //     if (!starts_with($val, '`') && !ends_with($val, '`')) {
-        //         $val = "\"$val\"";
-        //     }   else {
-        //         $val = str_replace('`', '', $val);
-        //     }
-        //     $result .= " $val " . (($key < $last) ? 'OR' : '');
-        // }
-
         $result = trim($value);
-        return "$param:(\"$result\")";
+        return "$param:($result)";
     }
 
     protected function setSearch(string $param, $value)

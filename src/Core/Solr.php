@@ -5,8 +5,8 @@ namespace Xfind\Core;
 use Solarium\Core\Client\Client;
 use Solarium\Core\Client\Endpoint;
 use Solarium\Core\Query\QueryInterface;
-use Solarium\Core\Query\Result\ResultInterface;
 use Solarium\Exception as SolrException;
+use Solarium\Core\Query\Result\ResultInterface;
 
 class Solr extends Client
 {
@@ -54,7 +54,6 @@ class Solr extends Client
     {
         return $this->query;
     }
-
 
     public function test()
     {
@@ -162,10 +161,17 @@ class Solr extends Client
         return $response;
     }
 
-    public function selectQuery(string $queryArgs = '*:*')
+    public function selectQuery(string $queryArgs = '*:*', array $filters = [])
     {
         $query = $this->createSelect();
         $query->setQuery($queryArgs);
+
+        if (count($filters) > 0) {
+            foreach ($filters as $key => $value) {
+                $this->addFilter($query, $key, $value);
+            }
+        }
+        
         $this->query = $query;
         return $this;
     }
@@ -204,7 +210,8 @@ class Solr extends Client
         return $this;
     }
 
-    protected function lang($string) {
+    protected function lang($string)
+    {
         $translation = config('xfind.translations') . ".{$string}";
         $result = __($translation);
 
@@ -212,5 +219,11 @@ class Solr extends Client
             $result = $string;
         }
         return $result;
+    }
+
+    protected function addFilter(&$selectQuery, string $name, string $query)
+    {
+        $selectQuery->createFilterQuery($name)
+                ->setQuery($query);
     }
 }
