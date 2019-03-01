@@ -56,7 +56,21 @@ abstract class Model
     {
         $this->solr = new static::$indexModel($this->solrClient);
         $this->fill($attributes);
-    }    
+    }
+
+    /**
+     * Check if the model needs to be booted and if so, do it.
+     *
+     * @return void
+     */
+    protected function bootIfNotBooted()
+    {
+        if (! isset(static::$booted[static::class])) {
+            static::$booted[static::class] = true;
+            static::boot();
+        }
+    }
+
 
     /**
      * Fill the model with an array of attributes.
@@ -70,13 +84,14 @@ abstract class Model
     {
         $totallyGuarded = $this->totallyGuarded();
 
-        foreach ($this->fillableFromArray($attributes) as $key => $value) {            
+        foreach ($this->fillableFromArray($attributes) as $key => $value) {
             if ($this->isFillable($key)) {
                 $this->setAttribute($key, $value);
             } elseif ($totallyGuarded) {
                 throw new MassAssignmentException(sprintf(
                     'Add [%s] to fillable property to allow mass assignment on [%s].',
-                    $key, get_class($this)
+                    $key,
+                    get_class($this)
                 ));
             }
         }
@@ -217,5 +232,4 @@ abstract class Model
     {
         return $this->toJson();
     }
-
 }
