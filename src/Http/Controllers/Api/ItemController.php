@@ -8,6 +8,7 @@ use Xfind\Core\Utils\DateHelpers;
 
 use Illuminate\Routing\Controller;
 use Xfind\Core\Utils\ArrayHelpers;
+use Illuminate\Support\Facades\App;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Support\Facades\Request as StaticRequest;
@@ -97,6 +98,11 @@ class ItemController extends Controller
             if (empty($value) || is_null($value)) {
                 continue;
             }
+
+            if (in_array($param, ['lang', 'language'])) {
+                $this->setLanguage($value);
+            }
+
             if (array_key_exists($param, $baseParams)) {
                 $baseParams[$param] = $params[$param];
                 $this->setQueryParamsToModel($param, $params[$param]);
@@ -157,6 +163,11 @@ class ItemController extends Controller
     {
         $result = trim($value);
         return "$param:($result)";
+    }
+
+    protected function setLanguage(string $lang = null)
+    {
+        App::setLocale(strtolower($lang) ?? config('app.fallback_locale'));
     }
 
     protected function setSearch(string $param, $value)

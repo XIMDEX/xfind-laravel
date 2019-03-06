@@ -301,7 +301,8 @@ abstract class Item
 
     public function delete($id)
     {
-        $exists = $this->one("id:{$id}");
+        $query = "id:\"{$id}\"";
+        $exists = $this->one($query);
         if (is_null($exists)) {
             throw new ModelNotFoundException();
         }
@@ -310,7 +311,7 @@ abstract class Item
         $delete->addCommit();
         $updated = $this->client->update($delete);
 
-        $exists = $this->one("id:{$id}");
+        $exists = $this->one($query);
         return is_null($exists);
     }
 
