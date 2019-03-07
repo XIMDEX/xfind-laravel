@@ -22,6 +22,9 @@ class ItemController extends Controller
     protected $response;
     protected $model = Item::class;
 
+    protected const MAP = [
+        'language' => 'lang'
+    ];
 
     public static $paramsToModel = [
         'query' => 'appendQuery',
@@ -101,6 +104,7 @@ class ItemController extends Controller
 
             if (in_array($param, ['lang', 'language'])) {
                 $this->setLanguage($value);
+                $param = static::MAP[$param] ?? $param;
             }
 
             if (array_key_exists($param, $baseParams)) {
@@ -111,7 +115,7 @@ class ItemController extends Controller
             } elseif (in_array($param, $this->model->getFields())) {
                 $qparam = $this->setParam($param, $value);
                 if ($this->model->isFilter($param)) {
-                    $this->model->addFilter($qparam);
+                    $this->model->addFilter($qparam, $param);
                     continue;
                 }
                 $query[] = $qparam;
