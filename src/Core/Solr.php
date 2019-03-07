@@ -206,6 +206,7 @@ class Solr extends Client
             ->createFacetField($facet)
             ->setField($field)
             ->setSort('index')
+            ->setMinCount(1)
             ->setLimit(-1);
         return $this;
     }
