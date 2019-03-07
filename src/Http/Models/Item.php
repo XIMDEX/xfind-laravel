@@ -45,7 +45,7 @@ abstract class Item
             $this->client = new Solr();
         }
         static::$rules = array_merge(static::$rules, self::$rules);
-        $this->fields = array_keys(static::$rules);
+        $this->fields = array_merge(static::$rules, $this->fields);
     }
 
     /**
