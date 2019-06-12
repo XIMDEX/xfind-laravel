@@ -17,7 +17,7 @@
  */
 
 
-namespace Xfind\Database\SolrEloquent\Concerns;
+namespace Xfind\Core\Database\SolrEloquent\Concerns;
 
 use DateTime;
 

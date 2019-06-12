@@ -17,44 +17,23 @@
  */
 
 
-namespace Xfind\Database\SolrEloquent\Concerns;
+namespace Xfind\Core\Database\SolrEloquent\Concerns;
 
-trait HasTimestamps
+trait GuardsAttributes
 {
-    use \Illuminate\Database\Eloquent\Concerns\HasTimestamps;
+    use \Illuminate\Database\Eloquent\Concerns\GuardsAttributes;
 
     /**
-     * Get the name of the "indexed at" column.
+     * Get the fillable attributes for the model.
      *
-     * @return string
+     * @return array
      */
-    public function getIndexedAtColumn()
+    public function getFillable()
     {
-        return static::INDEXED_AT;
-    }
-
-    /**
-     * Set the value of the "indexed at" attribute.
-     *
-     * @param  mixed  $value
-     * @return $this
-     */
-    public function setIndexedAt($value)
-    {
-        $this->{static::INDEXED_AT} = $value;
-        return $this;
-    }
-
-    /**
-     * Update the creation and update timestamps.
-     *
-     * @return void
-     */
-    protected function updateTimestamps()
-    {
-        $time = $this->freshTimestamp();
-        if (!is_null(static::INDEXED_AT)) {
-            $this->setIndexedAt($time);
-        }
+        return array_merge($this->fillable, [
+            $this->getIndexedAtColumn(),
+            $this->getCreatedAtColumn(),
+            $this->getUpdatedAtColumn()
+        ]);
     }
 }

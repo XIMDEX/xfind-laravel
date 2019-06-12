@@ -17,15 +17,15 @@
  */
 
 
-namespace Xfind\Database\SolrEloquent;
+namespace Xfind\Core\Database\SolrEloquent;
 
 use Illuminate\Support\Traits\ForwardsCalls;
 use Illuminate\Database\Eloquent\JsonEncodingException;
-use Xfind\Database\SolrEloquent\Concerns\HasAttributes;
-use Xfind\Database\SolrEloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Database\Eloquent\Concerns\HidesAttributes;
-use Xfind\Database\SolrEloquent\Concerns\GuardsAttributes;
+use Xfind\Core\Database\SolrEloquent\Concerns\HasAttributes;
+use Xfind\Core\Database\SolrEloquent\Concerns\HasTimestamps;
+use Xfind\Core\Database\SolrEloquent\Concerns\GuardsAttributes;
 
 abstract class Model
 {
@@ -55,13 +55,27 @@ abstract class Model
      * @var string
      */
     const CREATED_AT = 'created_at';
-    
+
     /**
      * The name of the "updated at" column.
      *
      * @var string
      */
     const UPDATED_AT = 'updated_at';
+
+    /**
+     * The default sort order
+     * 
+     * @var string
+     */
+    const SORT_ORDER = 'desc';
+
+    /**
+     * The default sort field
+     * 
+     * @var string
+     */
+    const SORT_FIELD = 'updated_at';
 
     // TODO Query builder
 
@@ -82,7 +96,7 @@ abstract class Model
      */
     protected function bootIfNotBooted()
     {
-        if (! isset(static::$booted[static::class])) {
+        if (!isset(static::$booted[static::class])) {
             static::$booted[static::class] = true;
             static::boot();
         }
@@ -189,12 +203,12 @@ abstract class Model
         $booted = [];
         static::$traitInitializers[$class] = [];
         foreach (class_uses_recursive($class) as $trait) {
-            $method = 'boot'.class_basename($trait);
-            if (method_exists($class, $method) && ! in_array($method, $booted)) {
+            $method = 'boot' . class_basename($trait);
+            if (method_exists($class, $method) && !in_array($method, $booted)) {
                 forward_static_call([$class, $method]);
                 $booted[] = $method;
             }
-            if (method_exists($class, $method = 'initialize'.class_basename($trait))) {
+            if (method_exists($class, $method = 'initialize' . class_basename($trait))) {
                 static::$traitInitializers[$class][] = $method;
                 static::$traitInitializers[$class] = array_unique(
                     static::$traitInitializers[$class]
@@ -202,7 +216,7 @@ abstract class Model
             }
         }
     }
-    
+
     //MAGIC METHODS
 
     /**
