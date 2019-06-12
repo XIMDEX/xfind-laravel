@@ -23,9 +23,9 @@ use Xfind\Models\Item;
 use Illuminate\Http\Request;
 use Xfind\Core\Utils\DateHelpers;
 
-use Illuminate\Routing\Controller;
 use Xfind\Core\Utils\ArrayHelpers;
 use Illuminate\Support\Facades\App;
+use Ximdex\Core\Routing\Controller;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Support\Facades\Request as StaticRequest;
@@ -34,7 +34,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 class ItemController extends Controller
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
-    
+
     protected $request;
     protected $response;
     protected $model = Item::class;
@@ -180,7 +180,7 @@ class ItemController extends Controller
         }
     }
 
-    protected function setParam(string $param, $value) : string
+    protected function setParam(string $param, $value): string
     {
         $result = trim($value);
         return "$param:($result)";
@@ -215,7 +215,7 @@ class ItemController extends Controller
 
         $last = count($values) - 1;
         $result = '';
-        
+
         foreach ($values as $key => $val) {
             $val = trim($val);
             if (starts_with($val, '`') && ends_with($val, '`')) {
