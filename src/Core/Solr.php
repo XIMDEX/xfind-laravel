@@ -22,7 +22,6 @@ namespace Xfind\Core;
 use Solarium\Core\Client\Client;
 use Solarium\Core\Client\Endpoint;
 use Solarium\Core\Query\QueryInterface;
-use Solarium\Exception as SolrException;
 use Solarium\Core\Query\Result\ResultInterface;
 
 class Solr extends Client
@@ -32,7 +31,6 @@ class Solr extends Client
 
     private $responseType;
     private $conf;
-    private $solarium;
     private $query;
     private $type;
 
@@ -70,18 +68,6 @@ class Solr extends Client
     public function getQuery()
     {
         return $this->query;
-    }
-
-    public function test()
-    {
-        $ping = $this->createPing();
-
-        try {
-            $result = $this->obtain($ping);
-            return 'Successful connection with solr';
-        } catch (SolrException $e) {
-            return $e;
-        }
     }
 
     /**
@@ -188,7 +174,7 @@ class Solr extends Client
                 $this->addFilter($query, $key, $value);
             }
         }
-        
+
         $this->query = $query;
         return $this;
     }
@@ -242,6 +228,6 @@ class Solr extends Client
     protected function addFilter(&$selectQuery, string $name, string $query)
     {
         $selectQuery->createFilterQuery($name)
-                ->setQuery($query);
+            ->setQuery($query);
     }
 }

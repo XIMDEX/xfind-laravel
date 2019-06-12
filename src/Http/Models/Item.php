@@ -21,7 +21,6 @@ namespace Xfind\Models;
 
 use Xfind\Core\Solr;
 use Illuminate\Support\Str;
-use Solarium\QueryType\Select\Query\Query;
 use Solarium\Exception\InvalidArgumentException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
