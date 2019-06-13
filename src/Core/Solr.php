@@ -179,9 +179,10 @@ class Solr extends Client
         return $this;
     }
 
-    public function limit(int $limit, int $start = 0)
+    public function limit(int $limit, int $page = 0)
     {
-        if ($start > 0) {
+        if ($page > 0) {
+            $start = $limit * $page;
             $this->query->setStart($start);
         }
         $this->query->setRows($limit);

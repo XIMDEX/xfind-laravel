@@ -20,9 +20,11 @@ namespace Xfind\Core\Database\SolrEloquent\Query;
 
 use Xfind\Core\Solr;
 use Whoops\Exception\ErrorException;
+use Xfind\Core\Database\SolrEloquent\Query\Paginator\Paginator;
 
 class Builder
 {
+
     const WHERE_AND = 'AND';
     const WHERE_OR = 'OR';
     const WHERE_DEFAULT = 'AND';
@@ -93,16 +95,51 @@ class Builder
 
     public function get()
     {
-        $this->getConnection()
-            ->selectQuery($this->query, $this->filters)
-            ->sort($this->order);
-
-        return $this->getConnection()->obtain();
+        return $this->prepareQuery()->obtain();
     }
+
+    /**
+     * Paginate the given query into a simple paginator.
+     *
+     * @param  int  $perPage
+     * @param  string  $pageName
+     * @param  int|null  $page
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    public function paginate($perPage = 20, $pageName = 'page', $page = null)
+    {
+        $page = $page ?: Paginator::resolveCurrentPage($pageName);
+        $results = $this->prepareQuery()->limit($perPage, $page - 1)->obtain();
+
+        $total = $this->getCountForPagination($results);
+
+        $options = array_only($results, ['facets', 'highlighting']);
+
+        return  Paginator::paginator($results['docs'], $total, $perPage, $page, $options);
+    }
+
+    /**
+     * Get the count of the total records for the paginator.
+     *
+     * @param  array  $columns
+     * @return int
+     */
+    public function getCountForPagination($data)
+    {
+        return $data['numFound'] ?? 0;
+    }
+
 
     public function getQuery()
     {
         return $this->query;
+    }
+
+    protected function prepareQuery()
+    {
+        return $this->getConnection()
+            ->selectQuery($this->query, $this->filters)
+            ->sort($this->order);
     }
 
     protected function isDefaultQuery()
