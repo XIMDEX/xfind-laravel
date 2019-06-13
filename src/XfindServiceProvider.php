@@ -29,9 +29,7 @@ class XfindServiceProvider extends ServiceProvider
      *
      * @var array
      */
-    protected $listen = [
-
-    ];
+    protected $listen = [];
 
     /**
      * Bootstrap the application services.
@@ -40,15 +38,15 @@ class XfindServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $this->mergeConfigFrom(__DIR__ . '/config/xfind.php', 'xfind');
-        $this->loadTranslationsFrom(__DIR__.'/resources/lang', 'xfind');
+        $this->mergeConfigFrom(__DIR__ . '/../config/xfind.php', 'xfind');
+        $this->loadTranslationsFrom(__DIR__ . '/../resources/lang', 'xfind');
 
         $this->publishes([
-            __DIR__ . '/config/xfind.php' => config_path('xfind.php'),
+            __DIR__ . '/../config/xfind.php' => config_path('xfind.php'),
         ], 'config');
 
         $this->publishes([
-            __DIR__ . '/resources/lang' => resource_path('lang'),
+            __DIR__ . '/../resources/lang' => resource_path('lang'),
         ], 'langs');
     }
 
@@ -58,6 +56,5 @@ class XfindServiceProvider extends ServiceProvider
      * @return void
      */
     public function register()
-    {
-    }
+    { }
 }
