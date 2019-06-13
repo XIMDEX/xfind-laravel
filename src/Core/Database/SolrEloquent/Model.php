@@ -19,7 +19,9 @@
 
 namespace Xfind\Core\Database\SolrEloquent;
 
+use Xfind\Core\Solr;
 use Illuminate\Support\Traits\ForwardsCalls;
+use Xfind\Core\Database\SolrEloquent\Query\Builder;
 use Illuminate\Database\Eloquent\JsonEncodingException;
 use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Database\Eloquent\Concerns\HidesAttributes;
@@ -34,13 +36,6 @@ abstract class Model
         HidesAttributes,
         GuardsAttributes,
         ForwardsCalls;
-
-    /**
-     * The array of booted models.
-     *
-     * @var array
-     */
-    protected static $booted = [];
 
     /**
      * The name of the "indexed at" column.
@@ -64,44 +59,39 @@ abstract class Model
     const UPDATED_AT = 'updated_at';
 
     /**
-     * The default sort order
-     * 
-     * @var string
+     * Indicates if the model exists.
+     *
+     * @var bool
      */
-    const SORT_ORDER = 'desc';
+    public $exists = false;
 
     /**
-     * The default sort field
-     * 
-     * @var string
+     * The array of booted models.
+     *
+     * @var array
      */
-    const SORT_FIELD = 'updated_at';
+    protected static $booted = [];
+
+    /**
+     * The available fields to the model
+     *
+     * @var array
+     */
+    protected $fillable = [];
 
     // TODO Query builder
 
-    protected static $indexModel = null;
     protected $solr = null;
     protected $solrClient = null;
 
     public function __construct($attributes = [])
     {
-        $this->solr = new static::$indexModel($this->solrClient);
+        if (is_null($this->solr)) {
+            $this->solr = new Solr;
+        }
+
         $this->fill($attributes);
     }
-
-    /**
-     * Check if the model needs to be booted and if so, do it.
-     *
-     * @return void
-     */
-    protected function bootIfNotBooted()
-    {
-        if (!isset(static::$booted[static::class])) {
-            static::$booted[static::class] = true;
-            static::boot();
-        }
-    }
-
 
     /**
      * Fill the model with an array of attributes.
@@ -114,10 +104,11 @@ abstract class Model
     public function fill(array $attributes)
     {
         $totallyGuarded = $this->totallyGuarded();
+        $attrs = $this->fillableFromArray($attributes);
 
-        foreach ($this->fillableFromArray($attributes) as $key => $value) {
+        foreach ($attrs as $key => $value) {
             if ($this->isFillable($key)) {
-                $this->setAttribute($key, $value);
+                $this->setAttribute($key, $this->getDefaultValue($key, $value));
             } elseif ($totallyGuarded) {
                 throw new MassAssignmentException(sprintf(
                     'Add [%s] to fillable property to allow mass assignment on [%s].',
@@ -129,6 +120,57 @@ abstract class Model
 
         $this->updateTimestamps();
         return $this;
+    }
+
+    /**
+     * Create a new instance of the given model.
+     *
+     * @param  array  $attributes
+     * @param  bool  $exists
+     * @return static
+     */
+    public function newInstance($attributes = [], $exists = false)
+    {
+        // This method just provides a convenient way for us to generate fresh model
+        // instances of this current model. It is particularly useful during the
+        // hydration of new objects via the Eloquent query builder instances.
+        $model = new static((array)$attributes);
+        $model->exists = $exists;
+
+        return $model;
+    }
+
+    /**
+     * Create a new model instance that is existing.
+     *
+     * @param  array  $attributes
+     * @param  string|null  $connection
+     * @return static
+     */
+    public function newFromBuilder($attributes = [], $connection = null)
+    {
+        $model = $this->newInstance([], true);
+        return $model;
+    }
+
+    /**
+     * Begin querying the model.
+     *
+     * @return \Xfind\Core\Database\SolrEloquent\Builder
+     */
+    public static function query()
+    {
+        return (new static)->newQuery();
+    }
+
+    /**
+     * Get a new query builder for the model's table.
+     *
+     * @return \Xfind\Core\Database\SolrEloquent\Builder
+     */
+    public function newQuery()
+    {
+        return new Builder($this->solr);
     }
 
     /**
@@ -166,6 +208,19 @@ abstract class Model
     public function jsonSerialize()
     {
         return $this->toArray();
+    }
+
+    /**
+     * Check if the model needs to be booted and if so, do it.
+     *
+     * @return void
+     */
+    protected function bootIfNotBooted()
+    {
+        if (!isset(static::$booted[static::class])) {
+            static::$booted[static::class] = true;
+            static::boot();
+        }
     }
 
     /**
@@ -218,6 +273,19 @@ abstract class Model
     }
 
     //MAGIC METHODS
+
+    /**
+     * Handle dynamic method calls into the model.
+     *
+     * @param  string  $method
+     * @param  array  $parameters
+     * @return mixed
+     */
+    public function __call($method, $parameters)
+    {
+        return $this->forwardCallTo($this->newQuery(), $method, $parameters);
+    }
+
 
     /**
      * Handle dynamic static method calls into the method.

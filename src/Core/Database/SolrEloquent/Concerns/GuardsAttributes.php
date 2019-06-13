@@ -22,6 +22,7 @@ namespace Xfind\Core\Database\SolrEloquent\Concerns;
 trait GuardsAttributes
 {
     use \Illuminate\Database\Eloquent\Concerns\GuardsAttributes;
+    use DefaultValueAttributes;
 
     /**
      * Get the fillable attributes for the model.
@@ -30,10 +31,50 @@ trait GuardsAttributes
      */
     public function getFillable()
     {
-        return array_merge($this->fillable, [
-            $this->getIndexedAtColumn(),
-            $this->getCreatedAtColumn(),
-            $this->getUpdatedAtColumn()
-        ]);
+        $fillable = [];
+
+        foreach ($this->fillable as $key => $value) {
+            if (is_string($value) || is_numeric($value)) {
+                $fillable[] = $value;
+                continue;
+            }
+            $fillable[] = $key;
+        }
+
+        return $fillable;
+    }
+
+    /**
+     * Fill null empty or unset attributes with default values
+     *
+     * @return array
+     */
+    public function appendWithDefault(array $attributes)
+    {
+        foreach ($this->fillable as $key => $value) {
+            $defValue = null;
+            if (!is_array($value)) {
+                continue;
+            } elseif (array_key_exists($key, $attributes)) {
+                $defValue = $attributes[$key];
+            }
+            $attributes[$key] = $this->getDefaultValue($key, $defValue);
+        }
+        return $attributes;
+    }
+
+    /**
+     * Get the fillable attributes of a given array.
+     *
+     * @param  array  $attributes
+     * @return array
+     */
+    protected function fillableFromArray(array $attributes)
+    {
+        if (count($this->getFillable()) > 0 && !static::$unguarded) {
+            return array_intersect_key($this->appendWithDefault($attributes), array_flip($this->getFillable()));
+        }
+
+        return $attributes;
     }
 }
