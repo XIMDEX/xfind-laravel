@@ -21,6 +21,7 @@ namespace Xfind\Core\Database\SolrEloquent;
 
 use Xfind\Core\Solr;
 use Illuminate\Support\Traits\ForwardsCalls;
+use \Illuminate\Database\Eloquent\Collection;
 use Xfind\Core\Database\SolrEloquent\Query\Builder;
 use Illuminate\Database\Eloquent\JsonEncodingException;
 use Illuminate\Database\Eloquent\MassAssignmentException;
@@ -146,28 +147,17 @@ abstract class Model
         return $this->primaryKey;
     }
 
-    /**
-     * Set the keys for a save update query.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    protected function setKeysForSaveQuery(Builder $query)
+    public function setFacets(array $facets)
     {
-        $query->where($this->getKeyName(), $this->getKeyForSaveQuery());
-        return $query;
+        $this->facets = $facets;
+        return $this;
     }
 
-    /**
-     * Get the primary key value for a save query.
-     *
-     * @return mixed
-     */
-    protected function getKeyForSaveQuery()
+    public function getFacets(): array
     {
-        return $this->original[$this->getKeyName()]
-            ?? $this->getKey();
+        return $this->facets;
     }
+
 
     /**
      * Fill the model with an array of attributes.
@@ -212,32 +202,9 @@ abstract class Model
             static::newQuery()->findOrFail($this->getKey())->attributes
         );
 
-        // $this->load(collect($this->relations)->except('pivot')->keys()->toArray());
-
         $this->syncOriginal();
 
         return $this;
-    }
-
-    /**
-     * Enable all facets to current select query
-     *
-     * @param array|null|\Xfind\Core\Database\SolrEloquent\FacetSettings $settings
-     * @return \Xfind\Core\Database\SolrEloquent\Builder
-     */
-    public function withFacets($settings = null)
-    {
-        if (!is_array($settings) && !is_null($settings) && !$settings instanceof FacetSettings) {
-            throw new InvalidArgumentException('The argument $settings must be one of these types (array, null, FacetSettings) and given type is ' . gettype($settings));
-        }
-
-        $query = $this->getQuery();
-
-        foreach ($this->facets as $facet) {
-            $query->addFacet($facet, $settings);
-        }
-
-        return $query;
     }
 
     /**
@@ -253,9 +220,35 @@ abstract class Model
         // instances of this current model. It is particularly useful during the
         // hydration of new objects via the Eloquent query builder instances.
         $model = new static((array)$attributes);
-        $model->exists = $exists;
+        $model->exists[] = $exists;
 
         return $model;
+    }
+
+    /**
+     * Create a new model instance that is existing.
+     *
+     * @param  array  $attributes
+     * @param  string|null  $connection
+     * @return static
+     */
+    public function newFromBuilder($attributes = [])
+    {
+        $model = $this->newInstance([], true);
+        $model->setRawAttributes((array)$attributes, true);
+
+        return $model;
+    }
+
+    /**
+     * Create a new Eloquent Collection instance.
+     *
+     * @param  array  $models
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function newCollection(array $models = [])
+    {
+        return new Collection($models);
     }
 
     /**
@@ -456,6 +449,29 @@ abstract class Model
                 );
             }
         }
+    }
+
+    /**
+     * Set the keys for a save update query.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    protected function setKeysForSaveQuery(Builder $query)
+    {
+        $query->where($this->getKeyName(), $this->getKeyForSaveQuery());
+        return $query;
+    }
+
+    /**
+     * Get the primary key value for a save query.
+     *
+     * @return mixed
+     */
+    protected function getKeyForSaveQuery()
+    {
+        return $this->original[$this->getKeyName()]
+            ?? $this->getKey();
     }
 
     //MAGIC METHODS
