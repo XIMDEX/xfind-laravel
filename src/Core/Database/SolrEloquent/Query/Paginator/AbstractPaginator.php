@@ -119,7 +119,7 @@ abstract class AbstractPaginator
      */
     public function perPage()
     {
-        return $this->perPage;
+        return intval($this->perPage);
     }
 
     /**

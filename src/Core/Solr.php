@@ -23,6 +23,7 @@ use Solarium\Core\Client\Client;
 use Solarium\Core\Client\Endpoint;
 use Solarium\Core\Query\QueryInterface;
 use Solarium\Core\Query\Result\ResultInterface;
+use Xfind\Core\Database\SolrEloquent\FacetSettings;
 
 class Solr extends Client
 {
@@ -33,6 +34,7 @@ class Solr extends Client
     private $conf;
     private $query;
     private $type;
+    private $facetsMap = [];
 
     public function __construct()
     {
@@ -135,8 +137,9 @@ class Solr extends Client
         foreach ($facets as $facet => $value) {
             $values = $value->getValues();
             if (is_array($values) && count($values) > 0) {
+                $facetKey = array_key_exists($facet, $this->facetsMap) ? $this->facetsMap[$facet] : $facet;
                 $resultFacet[] = [
-                    'key' => $facet,
+                    'key' => $facetKey,
                     'label' => $this->lang($facet),
                     'values' => $values,
                 ];
@@ -162,6 +165,22 @@ class Solr extends Client
         $response['highlighting'] = $resultHighlighting;
 
         return $response;
+    }
+
+    /**
+     * Create a select query instance.
+     *
+     * @param mixed $options
+     *
+     * @return \Solarium\QueryType\Select\Query\Query
+     */
+    public function createSelect($options = null)
+    {
+        if (is_null($this->query)) {
+            $query = parent::createSelect($options);
+            $this->query = $query;
+        }
+        return $this->query;
     }
 
     public function selectQuery(string $queryArgs = '*:*', array $filters = [])
@@ -204,14 +223,32 @@ class Solr extends Client
         return $this;
     }
 
-    public function facetField($facet, $field)
+    public function facetField(string $facet, string $field, $settings = null)
     {
-        $this->query->getFacetSet()
+        if (!is_array($settings) && !is_null($settings) && !$settings instanceof FacetSettings) {
+            throw new InvalidArgumentException('The argument $settings must be one of these types (array, null, FacetSettings) and given type is ' . gettype($settings));
+        }
+
+        if (is_array($settings)) {
+            $settings = new FacetSettings($settings);
+        } elseif (is_null($settings)) {
+            $settings = new FacetSettings();
+        }
+
+        $this->createSelect();
+
+        $this->facetsMap[$facet] = $field;
+        $facet = $this->query->getFacetSet()
             ->createFacetField($facet)
-            ->setField($field)
-            ->setSort('index')
-            ->setMinCount(1)
-            ->setLimit(-1);
+            ->setField($field);
+
+        foreach ($settings as $type => $value) {
+            $method = 'set' . ucfirst($type);
+            if (method_exists($facet, $method)) {
+                $facet->{$method}($value);
+            }
+        }
+
         return $this;
     }
 
