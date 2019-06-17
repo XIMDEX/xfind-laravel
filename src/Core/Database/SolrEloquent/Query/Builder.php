@@ -127,6 +127,27 @@ class Builder
     }
 
     /**
+     * Enable all facets to current select query
+     *
+     * @param array|null|\Xfind\Core\Database\SolrEloquent\FacetSettings $settings
+     * @return \Xfind\Core\Database\SolrEloquent\Builder
+     */
+    public function withFacets($settings = null)
+    {
+        if (!is_array($settings) && !is_null($settings) && !$settings instanceof FacetSettings) {
+            throw new InvalidArgumentException('The argument $settings must be one of these types (array, null, FacetSettings) and given type is ' . gettype($settings));
+        }
+
+        $facets = $this->getModel()->getFacets();
+
+        foreach ($facets as $facet) {
+            $this->addFacet($facet, $settings);
+        }
+
+        return $this;
+    }
+
+    /**
      * Save a new model and return the instance.
      *
      * @param  array  $attributes
@@ -363,11 +384,11 @@ class Builder
     protected function prepareResult($data)
     {
         $items = Arr::get($data, 'docs', []);
-        foreach ($items as &$item) {
-            $item = tap($this->newModelInstance($item, true), function ($instance) {
-                $instance->syncOriginal();
-            });
-        }
+
+        $instance = $this->newModelInstance();
+        $items = $instance->newCollection(array_map(function ($item) use ($instance) {
+            return $instance->newFromBuilder($item);
+        }, $items));
 
         $data['docs'] = $items;
         return $data;
