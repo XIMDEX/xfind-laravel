@@ -59,6 +59,13 @@ abstract class Model
     const UPDATED_AT = 'updated_at';
 
     /**
+     * The primary key for the model.
+     *
+     * @var string
+     */
+    protected $primaryKey = 'id';
+
+    /**
      * Indicates if the model exists.
      *
      * @var bool
@@ -79,6 +86,20 @@ abstract class Model
      */
     protected $fillable = [];
 
+    /**
+     * The available fields to the model
+     *
+     * @var array
+     */
+    protected $facets = [];
+
+    /**
+     * The availabe query builder
+     *
+     * @var \Xfind\Core\Database\SolrEloquent\Query\Builder
+     */
+    protected $queryBuilder;
+
     // TODO Query builder
 
     protected $solr = null;
@@ -91,6 +112,61 @@ abstract class Model
         }
 
         $this->fill($attributes);
+    }
+
+    /**
+     * Get the value of the model's primary key.
+     *
+     * @return mixed
+     */
+    public function getKey()
+    {
+        return $this->getAttribute($this->getKeyName());
+    }
+
+    /**
+     * Set the primary key for the model.
+     *
+     * @param  string  $key
+     * @return $this
+     */
+    public function setKeyName($key)
+    {
+        $this->primaryKey = $key;
+        return $this;
+    }
+
+    /**
+     * Get the primary key for the model.
+     *
+     * @return string
+     */
+    public function getKeyName()
+    {
+        return $this->primaryKey;
+    }
+
+    /**
+     * Set the keys for a save update query.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    protected function setKeysForSaveQuery(Builder $query)
+    {
+        $query->where($this->getKeyName(), $this->getKeyForSaveQuery());
+        return $query;
+    }
+
+    /**
+     * Get the primary key value for a save query.
+     *
+     * @return mixed
+     */
+    protected function getKeyForSaveQuery()
+    {
+        return $this->original[$this->getKeyName()]
+            ?? $this->getKey();
     }
 
     /**
@@ -118,8 +194,50 @@ abstract class Model
             }
         }
 
-        $this->updateTimestamps();
         return $this;
+    }
+
+    /**
+     * Reload the current model instance with fresh attributes from the database.
+     *
+     * @return $this
+     */
+    public function refresh()
+    {
+        if (!$this->exists) {
+            return $this;
+        }
+
+        $this->setRawAttributes(
+            static::newQuery()->findOrFail($this->getKey())->attributes
+        );
+
+        // $this->load(collect($this->relations)->except('pivot')->keys()->toArray());
+
+        $this->syncOriginal();
+
+        return $this;
+    }
+
+    /**
+     * Enable all facets to current select query
+     *
+     * @param array|null|\Xfind\Core\Database\SolrEloquent\FacetSettings $settings
+     * @return \Xfind\Core\Database\SolrEloquent\Builder
+     */
+    public function withFacets($settings = null)
+    {
+        if (!is_array($settings) && !is_null($settings) && !$settings instanceof FacetSettings) {
+            throw new InvalidArgumentException('The argument $settings must be one of these types (array, null, FacetSettings) and given type is ' . gettype($settings));
+        }
+
+        $query = $this->getQuery();
+
+        foreach ($this->facets as $facet) {
+            $query->addFacet($facet, $settings);
+        }
+
+        return $query;
     }
 
     /**
@@ -141,22 +259,9 @@ abstract class Model
     }
 
     /**
-     * Create a new model instance that is existing.
-     *
-     * @param  array  $attributes
-     * @param  string|null  $connection
-     * @return static
-     */
-    public function newFromBuilder($attributes = [], $connection = null)
-    {
-        $model = $this->newInstance([], true);
-        return $model;
-    }
-
-    /**
      * Begin querying the model.
      *
-     * @return \Xfind\Core\Database\SolrEloquent\Builder
+     * @return \Xfind\Core\Database\SolrEloquent\Query\Builder
      */
     public static function query()
     {
@@ -166,11 +271,92 @@ abstract class Model
     /**
      * Get a new query builder for the model's table.
      *
-     * @return \Xfind\Core\Database\SolrEloquent\Builder
+     * @return \Xfind\Core\Database\SolrEloquent\Query\Builder
      */
     public function newQuery()
     {
-        return new Builder($this->solr);
+        $this->queryBuilder = new Builder($this->solr, $this);
+        return $this->queryBuilder;
+    }
+
+    /**
+     * Get a new query builder for the model's table.
+     *
+     * @return \Xfind\Core\Database\SolrEloquent\Query\Builder
+     */
+    public function getQuery()
+    {
+        if (is_null($this->queryBuilder)) {
+            return $this->newQuery();
+        }
+        return $this->queryBuilder;
+    }
+
+    /**
+     * Save the model to the database.
+     *
+     * @param  array  $options
+     * @return bool
+     */
+    public function save()
+    {
+        $query = $this->newQuery();
+
+        //TODO @atovar implements events
+
+        if ($this->exists) {
+            $saved = $this->isDirty() ?
+                $this->performUpdate($query) : true;
+        } else {
+            $saved = $this->performInsert($query);
+        }
+
+        return $saved;
+    }
+
+    /**
+     * Perform a model insert operation.
+     *
+     * @param  \Xfind\Core\Database\SolrEloquent\Query\Builder  $query
+     * @return bool
+     */
+    protected function performInsert(Builder $query)
+    {
+        if ($this->usesTimestamps()) {
+            $this->updateTimestamps();
+        }
+
+        $attributes = $this->getAttributes();
+
+        if (empty($attributes)) {
+            return true;
+        }
+
+        $this->exists = $query->insert($attributes);
+
+        return $this->exists;
+    }
+
+    /**
+     * Perform a model update operation.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return bool
+     */
+    protected function performUpdate(Builder $query)
+    {
+        if ($this->usesTimestamps()) {
+            $this->updateTimestamps();
+        }
+
+        $dirty = $this->attributes + $this->getDirty();
+
+        if (count($dirty) > 0) {
+            $this->setKeysForSaveQuery($query)->insert($dirty);
+            $this->syncChanges();
+        }
+
+        return true;
     }
 
     /**
@@ -283,7 +469,7 @@ abstract class Model
      */
     public function __call($method, $parameters)
     {
-        return $this->forwardCallTo($this->newQuery(), $method, $parameters);
+        return $this->forwardCallTo($this->getQuery(), $method, $parameters);
     }
 
 
