@@ -44,6 +44,7 @@ class Builder
 
     protected $order = [];
     protected $filters = [];
+    protected $facets = [];
     protected $query = '*:*';
 
     protected $model;
@@ -123,6 +124,7 @@ class Builder
 
         $field = $field ?? $facet;
         $this->connection->facetField($facet, $field, $settings);
+        $this->facets[$field] = $settings;
         return $this;
     }
 
@@ -358,8 +360,8 @@ class Builder
 
         $total = $this->getCountForPagination($results);
 
-        $options = array_only($results, ['facets', 'highlighting']);
         $results = $this->prepareResult($results);
+        $options = array_only($results, ['facets', 'highlighting']);
 
         return  Paginator::paginator($results['docs'], $total, $perPage, $page, $options);
     }
@@ -384,13 +386,29 @@ class Builder
     protected function prepareResult($data)
     {
         $items = Arr::get($data, 'docs', []);
+        $facets = Arr::get($data, 'facets', null);
 
         $instance = $this->newModelInstance();
         $items = $instance->newCollection(array_map(function ($item) use ($instance) {
             return $instance->newFromBuilder($item);
         }, $items));
 
+        if (!is_null($facets)) {
+            $data['facets'] = $this->prepareFacets($facets);
+        }
         $data['docs'] = $items;
+        return $data;
+    }
+
+    protected function prepareFacets($data)
+    {
+        foreach ($data as &$facet) {
+            $key = $facet['key'];
+            if (array_key_exists($key, $this->facets) && array_key_exists('default', $this->facets[$key])) {
+                $defaultFacet = $this->facets[$key]['default'];
+                $facet['default'] = $defaultFacet;
+            }
+        }
         return $data;
     }
 

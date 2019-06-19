@@ -5,6 +5,7 @@ namespace Xfind\Core\Database\SolrEloquent\Query\Paginator;
 use JsonSerializable;
 use Illuminate\Contracts\Support\Jsonable;
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Database\Eloquent\Collection;
 
 class Paginator extends AbstractPaginator implements Arrayable, JsonSerializable, Jsonable
 {
@@ -53,9 +54,7 @@ class Paginator extends AbstractPaginator implements Arrayable, JsonSerializable
      */
     protected function setItems($items)
     {
-        // TODO set items as collection @atovar
-        // $this->items = $items instanceof Collection ? $items : Collection::make($items);
-        $this->items = $items;
+        $this->items = $items instanceof Collection ? $items : Collection::make($items);
         $this->hasMore = $this->count() > $this->perPage;
     }
 
@@ -74,7 +73,8 @@ class Paginator extends AbstractPaginator implements Arrayable, JsonSerializable
             'current_page' => $this->currentPage(),
             "last_page" => $this->lastPage(),
             'next_page' => $this->nextPage(),
-            'prev_page' => $this->prevPage()
+            'prev_page' => $this->prevPage(),
+            'data' => []
         ];
 
         foreach ($this->items as $item) {

@@ -20,8 +20,8 @@
 namespace Xfind\Core\Database\SolrEloquent;
 
 use Xfind\Core\Solr;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Traits\ForwardsCalls;
-use \Illuminate\Database\Eloquent\Collection;
 use Xfind\Core\Database\SolrEloquent\Query\Builder;
 use Illuminate\Database\Eloquent\JsonEncodingException;
 use Illuminate\Database\Eloquent\MassAssignmentException;
