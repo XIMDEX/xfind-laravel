@@ -19,7 +19,11 @@
 
 namespace Xfind\Core\Database\SolrEloquent;
 
+use ArrayAccess;
 use Xfind\Core\Solr;
+use JsonSerializable;
+use Illuminate\Contracts\Support\Jsonable;
+use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Traits\ForwardsCalls;
 use Xfind\Core\Database\SolrEloquent\Query\Builder;
@@ -30,7 +34,11 @@ use Xfind\Core\Database\SolrEloquent\Concerns\HasAttributes;
 use Xfind\Core\Database\SolrEloquent\Concerns\HasTimestamps;
 use Xfind\Core\Database\SolrEloquent\Concerns\GuardsAttributes;
 
-abstract class Model
+abstract class Model implements
+    ArrayAccess,
+    Arrayable,
+    Jsonable,
+    JsonSerializable
 {
     use HasAttributes,
         HasTimestamps,
@@ -353,6 +361,40 @@ abstract class Model
     }
 
     /**
+     * Delete the model from the database.
+     *
+     * @return bool|null
+     *
+     * @throws \Exception
+     */
+    public function remove()
+    {
+        if (!$this->exists) {
+            return;
+        }
+
+        //TODO @atovar implements events
+
+        $removed = $this->performRemove();
+
+        return $removed;
+    }
+
+    /**
+     * Perform the actual delete query on this model instance.
+     *
+     * @return void
+     */
+    protected function performRemove()
+    {
+
+        $this->setKeysForSaveQuery($this->getQuery())->remove();
+        $this->exists = false;
+
+        return true;
+    }
+
+    /**
      * Convert the model instance to JSON.
      *
      * @param  int  $options
@@ -522,6 +564,73 @@ abstract class Model
     public function __set($key, $value)
     {
         $this->setAttribute($key, $value);
+    }
+
+    /**
+     * Determine if the given attribute exists.
+     *
+     * @param  mixed  $offset
+     * @return bool
+     */
+    public function offsetExists($offset)
+    {
+        return !is_null($this->getAttribute($offset));
+    }
+
+    /**
+     * Get the value for a given offset.
+     *
+     * @param  mixed  $offset
+     * @return mixed
+     */
+    public function offsetGet($offset)
+    {
+        return $this->getAttribute($offset);
+    }
+
+    /**
+     * Set the value for a given offset.
+     *
+     * @param  mixed  $offset
+     * @param  mixed  $value
+     * @return void
+     */
+    public function offsetSet($offset, $value)
+    {
+        $this->setAttribute($offset, $value);
+    }
+
+    /**
+     * Unset the value for a given offset.
+     *
+     * @param  mixed  $offset
+     * @return void
+     */
+    public function offsetUnset($offset)
+    {
+        unset($this->attributes[$offset], $this->relations[$offset]);
+    }
+
+    /**
+     * Determine if an attribute or relation exists on the model.
+     *
+     * @param  string  $key
+     * @return bool
+     */
+    public function __isset($key)
+    {
+        return $this->offsetExists($key);
+    }
+
+    /**
+     * Unset an attribute on the model.
+     *
+     * @param  string  $key
+     * @return void
+     */
+    public function __unset($key)
+    {
+        $this->offsetUnset($key);
     }
 
     /**

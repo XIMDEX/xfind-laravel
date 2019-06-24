@@ -74,12 +74,8 @@ class Paginator extends AbstractPaginator implements Arrayable, JsonSerializable
             "last_page" => $this->lastPage(),
             'next_page' => $this->nextPage(),
             'prev_page' => $this->prevPage(),
-            'data' => []
+            'data' => $this->items
         ];
-
-        foreach ($this->items as $item) {
-            $pager['data'][] = $item->toArray();
-        }
 
         return $pager + $this->customFields;
     }

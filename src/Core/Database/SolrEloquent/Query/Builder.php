@@ -177,6 +177,20 @@ class Builder
     }
 
     /**
+     * Delete a record from the database.
+     *
+     * @return mixed
+     */
+    public function delete()
+    {
+        $data = $this->firstOrFail();
+        return tap($data, function ($model) {
+            $model->remove();
+        });
+    }
+
+
+    /**
      * Create or update a record matching the attributes, and fill it with values.
      *
      * @param  array  $attributes
@@ -334,6 +348,21 @@ class Builder
     }
 
     /**
+     * Remove a element from solr
+     *
+     * @return bool
+     */
+    public function remove()
+    {
+        $delete = $this->getConnection()->createUpdate();
+        $delete->addDeleteQuery($this->query);
+        $delete->addCommit();
+        $result = $this->getConnection()->update($delete);
+
+        return $result->getResponse()->getStatusCode() == 200;
+    }
+
+    /**
      * Create a new instance of the model being queried.
      *
      * @param  array  $attributes
@@ -451,15 +480,20 @@ class Builder
             return "({$query})";
         } elseif ($type === 2) {
             $field = trim($params[0]);
-            $value = trim($params[1]);
+            $value = $params[1];
         } elseif ($type === 3) {
             $field = trim($params[0]);
             $operator = array_key_exists($params[1], static::OPERATORS) ? static::OPERATORS[$params[1]] : $operator;
-            $value = trim($params[2]);
+            $value = $params[2];
         } else {
             throw new ErrorException("The where operator must need almost 2 parameters and {$type} given");
         }
 
+        if (is_bool($value)) {
+            $value = $value ? '1' : '0';
+        }
+        $value = trim($value);
+        
         return sprintf($operator, "{$field}:{$value}");
     }
 
