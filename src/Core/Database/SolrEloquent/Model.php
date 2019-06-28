@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Copyright (C) 2019 Open Ximdex Evolution SL [http://www.ximdex.org]
  *
@@ -27,6 +28,7 @@ use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Traits\ForwardsCalls;
 use Xfind\Core\Database\SolrEloquent\Query\Builder;
+use Illuminate\Database\Eloquent\Concerns\HasEvents;
 use Illuminate\Database\Eloquent\JsonEncodingException;
 use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Database\Eloquent\Concerns\HidesAttributes;
@@ -41,6 +43,7 @@ abstract class Model implements
     JsonSerializable
 {
     use HasAttributes,
+        HasEvents,
         HasTimestamps,
         HidesAttributes,
         GuardsAttributes,
@@ -227,8 +230,8 @@ abstract class Model implements
         // This method just provides a convenient way for us to generate fresh model
         // instances of this current model. It is particularly useful during the
         // hydration of new objects via the Eloquent query builder instances.
-        $model = new static((array)$attributes);
-        $model->exists[] = $exists;
+        $model = new static((array) $attributes);
+        $model->exists = $exists;
 
         return $model;
     }
@@ -243,7 +246,9 @@ abstract class Model implements
     public function newFromBuilder($attributes = [])
     {
         $model = $this->newInstance([], true);
-        $model->setRawAttributes((array)$attributes, true);
+        $model->setRawAttributes((array) $attributes, true);
+
+        $model->fireModelEvent('retrieved', false);
 
         return $model;
     }
@@ -303,7 +308,9 @@ abstract class Model implements
     {
         $query = $this->newQuery();
 
-        //TODO @atovar implements events
+        if ($this->fireModelEvent('saving') === false) {
+            return false;
+        }
 
         if ($this->exists) {
             $saved = $this->isDirty() ?
@@ -311,6 +318,8 @@ abstract class Model implements
         } else {
             $saved = $this->performInsert($query);
         }
+
+        // TODO @atovar implement finishSave
 
         return $saved;
     }
@@ -323,6 +332,10 @@ abstract class Model implements
      */
     protected function performInsert(Builder $query)
     {
+        if ($this->fireModelEvent('creating') === false) {
+            return false;
+        }
+
         if ($this->usesTimestamps()) {
             $this->updateTimestamps();
         }
@@ -335,6 +348,8 @@ abstract class Model implements
 
         $this->exists = $query->insert($attributes);
 
+        $this->fireModelEvent('created', false);
+
         return $this->exists;
     }
 
@@ -346,6 +361,10 @@ abstract class Model implements
      */
     protected function performUpdate(Builder $query)
     {
+        if ($this->fireModelEvent('updating') === false) {
+            return false;
+        }
+
         if ($this->usesTimestamps()) {
             $this->updateTimestamps();
         }
@@ -355,6 +374,7 @@ abstract class Model implements
         if (count($dirty) > 0) {
             $this->setKeysForSaveQuery($query)->insert($dirty);
             $this->syncChanges();
+            $this->fireModelEvent('updated', false);
         }
 
         return true;
@@ -373,9 +393,13 @@ abstract class Model implements
             return;
         }
 
-        //TODO @atovar implements events
+        if ($this->fireModelEvent('deleting') === false) {
+            return false;
+        }
 
         $removed = $this->performRemove();
+
+        $this->fireModelEvent('deleted', false);
 
         return $removed;
     }
@@ -440,7 +464,12 @@ abstract class Model implements
     {
         if (!isset(static::$booted[static::class])) {
             static::$booted[static::class] = true;
+
+            $this->fireModelEvent('booting', false);
+
             static::boot();
+
+            $this->fireModelEvent('booted', false);
         }
     }
 
