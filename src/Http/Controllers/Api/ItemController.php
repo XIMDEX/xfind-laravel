@@ -31,6 +31,11 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Support\Facades\Request as StaticRequest;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
+/**
+ * Base Item clas controller
+ * 
+ * @deprecated dev
+ */
 class ItemController extends Controller
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;

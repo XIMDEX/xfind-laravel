@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Copyright (C) 2019 Open Ximdex Evolution SL [http://www.ximdex.org]
  *
@@ -54,8 +55,8 @@ trait HasAttributes
     {
         $defaults = [static::CREATED_AT, static::UPDATED_AT, static::INDEXED_AT];
         return $this->usesTimestamps()
-                    ? array_unique(array_merge($this->dates, $defaults))
-                    : $this->dates;
+            ? array_unique(array_merge($this->dates, $defaults))
+            : $this->dates;
     }
 
     /**
@@ -76,8 +77,15 @@ trait HasAttributes
      */
     public function fromDateTime($value)
     {
-        return empty($value) ? $value : $this->asDateTime($value)->format(
-            $this->getDateFormat()
-        );
+        if (!empty($value)) {
+            if (is_array($value)) {
+                $value = reset($value);
+            }
+            $value = $this->asDateTime($value)->format(
+                $this->getDateFormat()
+            );
+        }
+
+        return $value;
     }
 }

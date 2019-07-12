@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Copyright (C) 2019 Open Ximdex Evolution SL [http://www.ximdex.org]
  *
@@ -43,6 +44,21 @@ trait HasTimestamps
     {
         $this->{static::INDEXED_AT} = $value;
         return $this;
+    }
+
+    /**
+     * Get the value of the "indexed at" attribute.
+     *
+     * @return $this
+     */
+    public function getIndexedAtAttribute()
+    {
+        $value = $this->{static::INDEXED_AT};
+
+        if (is_array($value)) {
+            $value = reset($value);
+        }
+        return $value;
     }
 
     /**
