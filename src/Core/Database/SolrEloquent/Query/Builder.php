@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Copyright (C) 2019 Open Ximdex Evolution SL [http://www.ximdex.org]
  *
@@ -59,6 +60,9 @@ class Builder
     public function setModel(Model $model)
     {
         $this->model = $model;
+        if (!is_null($model->id)) {
+            $this->where('id', $model->id);
+        }
         return $this;
     }
 
@@ -175,7 +179,6 @@ class Builder
             $model->fill($values)->save();
         });
     }
-
     /**
      * Delete a record from the database.
      *
@@ -493,7 +496,7 @@ class Builder
             $value = $value ? '1' : '0';
         }
         $value = trim($value);
-        
+
         return sprintf($operator, "{$field}:{$value}");
     }
 
