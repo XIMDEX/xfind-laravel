@@ -17,38 +17,21 @@
  */
 
 
-namespace Xfind\Core;
+namespace Xfind\Core\Database\SolrEloquent\Concerns;
 
-class Config
+trait DefaultValueAttributes
 {
-    private const CONFIG_FILE = '/.config';
-
-    private static function open(bool $groups = false)
+    protected function getDefaultValue(string $attribute, $value)
     {
-        $file = dirname(dirname(__FILE__)) . self::CONFIG_FILE;
-        $result = parse_ini_file($file, $groups);
-        return $result;
-    }
-
-    public static function get(string $config = '')
-    {
-        $configs = self::open();
-
-        if (!empty($config) && array_key_exists($config, $configs)) {
-            $configs = $configs[$config];
+        if (array_key_exists($attribute, $this->fillable) && (is_null($value) || empty($value))) {
+            foreach ($this->fillable as $key => $defValue) {
+                if (is_array($defValue) && array_key_exists('default', $defValue)) {
+                    $value = $defValue['default'];
+                    break;
+                }
+            }
         }
 
-        return $configs;
-    }
-
-    public static function getGroup(string $group = '')
-    {
-        $configs = self::open(true);
-
-        if (!empty($group) && array_key_exists($group, $configs)) {
-            $configs = $configs[$group];
-        }
-
-        return $configs;
+        return $value;
     }
 }

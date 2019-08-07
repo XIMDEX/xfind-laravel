@@ -1,4 +1,21 @@
 <?php
+/**
+ * Copyright (C) 2019 Open Ximdex Evolution SL [http://www.ximdex.org]
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/agpl-3.0.html>.
+ */
+
 
 namespace Xfind\Http\Controllers\api;
 
@@ -6,21 +23,30 @@ use Xfind\Models\Item;
 use Illuminate\Http\Request;
 use Xfind\Core\Utils\DateHelpers;
 
-use Illuminate\Routing\Controller;
 use Xfind\Core\Utils\ArrayHelpers;
+use Illuminate\Support\Facades\App;
+use Ximdex\Core\Routing\Controller;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Support\Facades\Request as StaticRequest;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
+/**
+ * Base Item clas controller
+ * 
+ * @deprecated dev
+ */
 class ItemController extends Controller
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
-    
+
     protected $request;
     protected $response;
     protected $model = Item::class;
 
+    protected const MAP = [
+        'language' => 'lang'
+    ];
 
     public static $paramsToModel = [
         'query' => 'appendQuery',
@@ -71,18 +97,19 @@ class ItemController extends Controller
     }
 
     protected function getQueryParams()
-    {        
+    {
         $queryParams = StaticRequest::all();
 
         $type = 'AND';
         if (array_key_exists('exclude', $queryParams)) {
             $type = ($queryParams['exclude'] === true | $queryParams['exclude'] === 'true') ? $type : 'OR';
-        }        
+        }
 
         return $this->addParams($queryParams, $type, null);
     }
 
-    protected function addParams(array $params, string $type = 'AND', ?string $prefix = 'AND') {
+    protected function addParams(array $params, string $type = 'AND', ?string $prefix = 'AND')
+    {
         $baseParams = [
             'limit' => 20,
             'start' => 0,
@@ -96,13 +123,24 @@ class ItemController extends Controller
             if (empty($value) || is_null($value)) {
                 continue;
             }
+
+            if (in_array($param, ['lang', 'language'])) {
+                $this->setLanguage($value);
+                $param = static::MAP[$param] ?? $param;
+            }
+
             if (array_key_exists($param, $baseParams)) {
                 $baseParams[$param] = $params[$param];
                 $this->setQueryParamsToModel($param, $params[$param]);
-            }   elseif ($param === $this->model::$search) {
+            } elseif ($param === $this->model::$search) {
                 $query[] = $this->setSearch($param, $value);
-            }   elseif (in_array($param, $this->model->getFields())) {
-                $query[] = $this->setParam($param, $value);
+            } elseif (in_array($param, $this->model->getFields())) {
+                $qparam = $this->setParam($param, $value);
+                if ($this->model->isFilter($param)) {
+                    $this->model->addFilter($qparam, $param);
+                    continue;
+                }
+                $query[] = $qparam;
             } elseif (substr($param, 0, 5) === 'sort_') {
                 $sort[str_replace('sort_', '', $param)] = $value;
             }
@@ -147,23 +185,15 @@ class ItemController extends Controller
         }
     }
 
-    protected function setParam(string $param, $value) : string
+    protected function setParam(string $param, $value): string
     {
-        $values = explode(',', $value);
-        $last = count($values) - 1;
-        $result = '';
-        
-        foreach($values as $key => $val) {
-            if (!starts_with($val, '`') && !ends_with($val, '`')) {
-                $val = "\"$val\"";
-            }   else {
-                $val = str_replace('`', '', $val);
-            }
-            $result .= " $val " . (($key < $last) ? 'OR' : '');
-        }
-
-        $result = trim($result);
+        $result = trim($value);
         return "$param:($result)";
+    }
+
+    protected function setLanguage(string $lang = null)
+    {
+        App::setLocale(strtolower($lang) ?? config('app.fallback_locale'));
     }
 
     protected function setSearch(string $param, $value)
@@ -172,7 +202,7 @@ class ItemController extends Controller
         $literal = false;
 
         foreach ($values as $key => $val) {
-            if(empty($val)) {
+            if (empty($val)) {
                 $literal = !$literal;
                 unset($values[$key]);
                 continue;
@@ -190,8 +220,8 @@ class ItemController extends Controller
 
         $last = count($values) - 1;
         $result = '';
-        
-        foreach($values as $key => $val) {
+
+        foreach ($values as $key => $val) {
             $val = trim($val);
             if (starts_with($val, '`') && ends_with($val, '`')) {
                 $val = str_replace('`', '', $val);

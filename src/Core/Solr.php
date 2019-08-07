@@ -1,4 +1,21 @@
 <?php
+/**
+ * Copyright (C) 2019 Open Ximdex Evolution SL [http://www.ximdex.org]
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/agpl-3.0.html>.
+ */
+
 
 namespace Xfind\Core;
 
@@ -6,7 +23,7 @@ use Solarium\Core\Client\Client;
 use Solarium\Core\Client\Endpoint;
 use Solarium\Core\Query\QueryInterface;
 use Solarium\Core\Query\Result\ResultInterface;
-use Solarium\Exception as SolrException;
+use Xfind\Core\Database\SolrEloquent\FacetSettings;
 
 class Solr extends Client
 {
@@ -15,9 +32,9 @@ class Solr extends Client
 
     private $responseType;
     private $conf;
-    private $solarium;
     private $query;
     private $type;
+    private $facetsMap = [];
 
     public function __construct()
     {
@@ -53,19 +70,6 @@ class Solr extends Client
     public function getQuery()
     {
         return $this->query;
-    }
-
-
-    public function test()
-    {
-        $ping = $this->createPing();
-
-        try {
-            $result = $this->obtain($ping);
-            return 'Successful connection with solr';
-        } catch (SolrException $e) {
-            return $e;
-        }
     }
 
     /**
@@ -133,8 +137,9 @@ class Solr extends Client
         foreach ($facets as $facet => $value) {
             $values = $value->getValues();
             if (is_array($values) && count($values) > 0) {
+                $facetKey = array_key_exists($facet, $this->facetsMap) ? $this->facetsMap[$facet] : $facet;
                 $resultFacet[] = [
-                    'key' => $facet,
+                    'key' => $facetKey,
                     'label' => $this->lang($facet),
                     'values' => $values,
                 ];
@@ -162,17 +167,41 @@ class Solr extends Client
         return $response;
     }
 
-    public function selectQuery(string $queryArgs = '*:*')
+    /**
+     * Create a select query instance.
+     *
+     * @param mixed $options
+     *
+     * @return \Solarium\QueryType\Select\Query\Query
+     */
+    public function createSelect($options = null)
+    {
+        if (is_null($this->query)) {
+            $query = parent::createSelect($options);
+            $this->query = $query;
+        }
+        return $this->query;
+    }
+
+    public function selectQuery(string $queryArgs = '*:*', array $filters = [])
     {
         $query = $this->createSelect();
         $query->setQuery($queryArgs);
+
+        if (count($filters) > 0) {
+            foreach ($filters as $key => $value) {
+                $this->addFilter($query, $key, $value);
+            }
+        }
+
         $this->query = $query;
         return $this;
     }
 
-    public function limit(int $limit, int $start = 0)
+    public function limit(int $limit, int $page = 0)
     {
-        if ($start > 0) {
+        if ($page > 0) {
+            $start = $limit * $page;
             $this->query->setStart($start);
         }
         $this->query->setRows($limit);
@@ -194,17 +223,37 @@ class Solr extends Client
         return $this;
     }
 
-    public function facetField($facet, $field)
+    public function facetField(string $facet, string $field, $settings = null)
     {
-        $this->query->getFacetSet()
+        if (!is_array($settings) && !is_null($settings) && !$settings instanceof FacetSettings) {
+            throw new InvalidArgumentException('The argument $settings must be one of these types (array, null, FacetSettings) and given type is ' . gettype($settings));
+        }
+
+        if (is_array($settings)) {
+            $settings = new FacetSettings($settings);
+        } elseif (is_null($settings)) {
+            $settings = new FacetSettings();
+        }
+
+        $this->createSelect();
+
+        $this->facetsMap[$facet] = $field;
+        $facet = $this->query->getFacetSet()
             ->createFacetField($facet)
-            ->setField($field)
-            ->setSort('index')
-            ->setLimit(-1);
+            ->setField($field);
+
+        foreach ($settings as $type => $value) {
+            $method = 'set' . ucfirst($type);
+            if (method_exists($facet, $method)) {
+                $facet->{$method}($value);
+            }
+        }
+
         return $this;
     }
 
-    protected function lang($string) {
+    protected function lang($string)
+    {
         $translation = config('xfind.translations') . ".{$string}";
         $result = __($translation);
 
@@ -212,5 +261,11 @@ class Solr extends Client
             $result = $string;
         }
         return $result;
+    }
+
+    protected function addFilter(&$selectQuery, string $name, string $query)
+    {
+        $selectQuery->createFilterQuery($name)
+            ->setQuery($query);
     }
 }

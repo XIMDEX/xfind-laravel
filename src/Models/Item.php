@@ -1,11 +1,26 @@
 <?php
+/**
+ * Copyright (C) 2019 Open Ximdex Evolution SL [http://www.ximdex.org]
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/agpl-3.0.html>.
+ */
+
 
 namespace Xfind\Models;
 
 use Xfind\Core\Solr;
 use Illuminate\Support\Str;
-use Solarium\QueryType\Select\Query\Query;
-use phpDocumentor\Reflection\Types\Static_;
 use Solarium\Exception\InvalidArgumentException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -15,11 +30,12 @@ abstract class Item
     protected $page = 0;
     protected $start = 0;
     protected $query = '*:*';
+    protected $filters = [];
     protected $sort = [];
 
     protected $defaultSort = ['updated_at' => 'desc'];
         
-    protected static $search = null;
+    public static $search = null;
 
     protected static $rules = [
         'id' => ['field' => 'id', 'type' => 'string', 'required' => true],
@@ -32,6 +48,8 @@ abstract class Item
 
     protected $fields = [];
 
+    protected $filterFields = [];
+
     protected $highlight_fields = [];
 
     private $client;
@@ -43,8 +61,7 @@ abstract class Item
             $this->client = new Solr();
         }
         static::$rules = array_merge(static::$rules, self::$rules);
-        $this->fields = array_keys(static::$rules);
-
+        $this->fields = array_merge(array_keys(static::$rules), $this->fields);
     }
 
     /**
@@ -102,6 +119,10 @@ abstract class Item
      */
     public function setQuery($query)
     {
+        $query = trim($query);
+        if (starts_with($query, 'AND')) {
+            $query = trim(str_replace_first('AND', '', $query));
+        }
         $this->query = $query;
 
         return $this;
@@ -183,6 +204,26 @@ abstract class Item
     {
         return $this->sort;
     }
+    
+    public function addFilter(string $query, string $name = null)
+    {
+        if (is_null($name)) {
+            $name = uniqid();
+        }
+
+        $this->filters[$name] = $query;
+        return $this;
+    }
+
+    public function getFilters() : array
+    {
+        return $this->filters;
+    }
+
+    public function isFilter($field) : bool
+    {
+        return in_array($field, $this->filterFields);
+    }
 
 
     /**
@@ -204,9 +245,9 @@ abstract class Item
         }
 
         $this->client
-            ->selectQuery($query)
+            ->selectQuery($query, $this->filters)
             ->sort($sort);
-
+        
         foreach (static::$facets as $facet) {
             try {
                 $this->facetField($facet, $facet);
@@ -232,6 +273,11 @@ abstract class Item
         }
 
         return $this;
+    }
+
+    public function byId(string $id)
+    {
+        return $this->one("id:'{$id}'");
     }
 
     public function one($query)
@@ -271,7 +317,8 @@ abstract class Item
 
     public function delete($id)
     {
-        $exists = $this->one("id:{$id}");
+        $query = "id:\"{$id}\"";
+        $exists = $this->one($query);
         if (is_null($exists)) {
             throw new ModelNotFoundException();
         }
@@ -280,7 +327,7 @@ abstract class Item
         $delete->addCommit();
         $updated = $this->client->update($delete);
 
-        $exists = $this->one("id:{$id}");
+        $exists = $this->one($query);
         return is_null($exists);
     }
 

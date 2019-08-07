@@ -14,7 +14,8 @@
     "minimum-stability": "dev",
     "require": {
         "solarium/solarium": "4.*",
-        "tucker-eric/laravel-xml-middleware": "^1.0"
+        "tucker-eric/laravel-xml-middleware": "^1.0",
+        "ximdex/semantic_information_repository": "dev-develop"
     },
     "autoload": {
         "psr-4": {
@@ -24,7 +25,8 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Xfind\\XfindServiceProvider"
+                "Xfind\\XfindServiceProvider",
+                "XmlMiddleware\\XmlRequestServiceProvider"
             ]
         }
     }
