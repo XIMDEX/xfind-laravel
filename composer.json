@@ -15,7 +15,7 @@
     "require": {
         "solarium/solarium": "4.*",
         "tucker-eric/laravel-xml-middleware": "^1.0",
-        "ximdex/xsir_v0": "dev-develop"
+        "ximdex/xsir_v0": "develop"
     },
     "autoload": {
         "psr-4": {
